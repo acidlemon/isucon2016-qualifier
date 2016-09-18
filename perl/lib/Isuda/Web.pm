@@ -326,7 +326,7 @@ sub htmlify {
 sub htmlify_others {
     my ($self, $c, $keyword) = @_;
 
-    my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE description like ?', "%${keyword}%");
+    my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE MATCH (description) AGAINST (? IN NATURAL LANGUAGE MODE)', $keyword);
     my $htmlify_re = $self->create_re;
 
     for my $entry (@$entries) {
