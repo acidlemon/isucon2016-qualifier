@@ -131,7 +131,7 @@ post '/keyword' => [qw/set_name authenticate/] => sub {
         VALUES (?, ?, ?, NOW(), NOW(), ?)
         ON DUPLICATE KEY UPDATE
         author_id = ?, keyword = ?, description = ?, updated_at = NOW()
-    ], $user_id, $keyword, $description, length($keyword), $user_id, $keyword, $description));
+    ], $user_id, $keyword, $description, length($keyword), $user_id, $keyword, $description);
 
     $c->redirect('/');
 };
