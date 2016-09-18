@@ -231,11 +231,11 @@ post '/stars' => sub {
     my ($self, $c) = @_;
     my $keyword = $c->req->parameters->{keyword};
 
-    # TODO: 呼ばないようにする
-    my $origin = $ENV{ISUDA_ORIGIN} // 'http://localhost:5000';
-    my $url = "$origin/keyword/" . uri_escape_utf8($keyword);
-    my $res = Furl->new->get($url);
-    unless ($res->is_success) {
+    my $entry = $self->dbh->select_row(qq[
+        SELECT * FROM entry
+        WHERE keyword = ?
+    ], $keyword);
+    unless ($entry) {
         $c->halt(404);
     }
 
