@@ -10,3 +10,5 @@ requires 'Plack::Middleware::Session';
 requires 'Starlet';
 requires 'String::Random';
 requires 'URI::Escape';
+requires 'Devel::NYTProf';
+requires 'Devel::KYTProf';
