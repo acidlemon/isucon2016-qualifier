@@ -125,8 +125,9 @@ get '/' => [qw/set_name/] => sub {
 
     my $keywords = [map { $_->{keyword} } @$entries];
     my $stars_by_keyword = $self->load_starts_by_keyword($keywords);
+    my $htmlify_re = $self->create_re();
     foreach my $entry (@$entries) {
-        $entry->{html} = $entry->{description_html};
+        $entry->{html} = $entry->{description_html} || $self->htmlify_with_re($entry->{description});
         $entry->{stars} = $stars_by_keyword->{$entry->{keyword}};
     }
 
@@ -240,7 +241,7 @@ get '/keyword/:keyword' => [qw/set_name/] => sub {
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
-    $entry->{html} = $entry->{description_html};
+    $entry->{html} = $entry->{description_html} || $c->htmlify($entry->{description});
     $entry->{stars} = $self->load_stars($entry->{keyword});
 
     $c->render('keyword.tx', { entry => $entry });
@@ -291,7 +292,11 @@ sub create_re {
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    push @$keywords, +{ keyword => $keyword };
+
+    if ($keyword) {
+        push @$keywords, +{ keyword => $keyword };
+    }
+
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
 
     return $re;
@@ -326,13 +331,9 @@ sub htmlify {
 sub htmlify_others {
     my ($self, $c, $keyword) = @_;
 
-    my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE description like ?', "%${keyword}%");
-    my $htmlify_re = $self->create_re($keyword);
-
-    for my $entry (@$entries) {
-        my $html = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
-        $self->dbh->query('UPDATE entry SET description_html = ? WHERE id = ?', $html, $entry->{id});
-    }
+    my $entries = $self->dbh->select_all('SELECT id FROM entry WHERE description like ?', "%${keyword}%");
+    my $entry_ids = [ map { $_->{id} } @$entries ];
+    $self->dbh->query('UPDATE entry SET description_html = ? WHERE id in (?)', '', $entry_ids);
 }
 
 sub load_stars {
