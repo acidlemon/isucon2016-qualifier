@@ -291,9 +291,9 @@ sub create_re {
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
+    my @re =  map { quotemeta $_->{keyword} } @$keywords;
 
-    return $re;
+    return \@re;
 }
 
 sub htmlify_with_re {
@@ -302,10 +302,12 @@ sub htmlify_with_re {
     return '' unless defined $content;
 
     my %kw2sha;
-    $content =~ s{($re)}{
-        my $kw = $1;
-        $kw2sha{$kw} = "isuda_" . sha1_hex(encode_utf8($kw));
-    }eg;
+    for my $kw (@$re) {
+        $content =~ s{$kw}{
+            my $kw = $1;
+            $kw2sha{$kw} = "isuda_" . sha1_hex(encode_utf8($kw));
+        }e;
+    }
     $content = html_escape($content);
     while (my ($kw, $hash) = each %kw2sha) {
         my $url = 'http://'.$c->req->env->{HTTP_HOST}.'/keyword/'.uri_escape_utf8($kw);
