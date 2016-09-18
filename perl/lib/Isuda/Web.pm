@@ -372,7 +372,6 @@ sub load_starts_by_keyword {
 }
 
 sub is_spam_contents {
-    return 0;
     my $content = shift;
     my $res = $ua->post(config('isupam_origin'), [], [
         content => encode_utf8($content),
