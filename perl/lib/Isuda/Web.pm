@@ -241,7 +241,7 @@ get '/keyword/:keyword' => [qw/set_name/] => sub {
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
-    $entry->{html} = $entry->{description_html} || $c->htmlify($entry->{description});
+    $entry->{html} = $entry->{description_html} || $self->htmlify($entry->{description});
     $entry->{stars} = $self->load_stars($entry->{keyword});
 
     $c->render('keyword.tx', { entry => $entry });
