@@ -10,7 +10,7 @@ use Furl;
 use JSON::XS qw/decode_json/;
 use String::Random qw/random_string/;
 use Digest::SHA1 qw/sha1_hex/;
-use URI::Escape qw/uri_escape_utf8/;
+use URI::XSEscape qw/uri_escape_utf8/;
 use Text::Xslate::Util qw/html_escape/;
 use List::Util qw/min max/;
 
@@ -326,7 +326,7 @@ sub htmlify {
 sub htmlify_others {
     my ($self, $c, $keyword) = @_;
 
-    my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE description like ?', "%${keyword}%");
+    my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE MATCH (description) AGAINST (? IN NATURAL LANGUAGE MODE)', $keyword);
     my $htmlify_re = $self->create_re($keyword);
 
     for my $entry (@$entries) {
