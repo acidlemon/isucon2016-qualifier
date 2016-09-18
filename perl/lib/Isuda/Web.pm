@@ -54,7 +54,7 @@ sub user_by_id {
 
     state $user_by_id = { map { $_->{id} => $_ } @{$self->users} };
 
-    return $self->user_by_id($id);
+    return $user_by_id->{$id};
 }
 
 sub user_by_name {
