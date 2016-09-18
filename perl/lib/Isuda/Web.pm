@@ -278,7 +278,7 @@ post '/stars' => sub {
         $c->halt(404);
     }
 
-    $self->redis->rpush(sprintf('star:%s', $keyword), $c->req->parameters->{user});
+    $self->redis->rpush(sprintf('star:%s', encode_utf8($keyword)), $c->req->parameters->{user});
 
     $c->render_json({
         result => 'ok',
@@ -329,7 +329,7 @@ sub load_stars {
 #        SELECT * FROM star WHERE keyword = ?
     #    ], $keyword);
 
-    my @stars = $self->redis->lrange(sprintf('star:%s', $keyword), 0, -1);
+    my @stars = $self->redis->lrange(sprintf('star:%s', encode_utf8($keyword)), 0, -1);
     return [] unless @stars;
 
     my @star_hashes = map { +{ user_name => $_ }  } @stars;
