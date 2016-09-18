@@ -76,7 +76,7 @@ get '/initialize' => sub {
     $self->dbh->query(q[
         DELETE FROM entry WHERE id > 7101
     ]);
-    $self->dbh->(q[
+    $self->dbh->query(q[
         ALTER TABLE entry AUTO_INCREMENT = 7102
     ]);
 
