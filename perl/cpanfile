@@ -13,3 +13,4 @@ requires 'URI::Escape';
 requires 'Devel::NYTProf';
 requires 'Devel::KYTProf';
 requires 'Gazelle';
+requires 'Redis::Fast';
