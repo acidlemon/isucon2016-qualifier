@@ -291,7 +291,7 @@ sub create_re {
     for my $keyword (@$keywords) {
         $re .= quotemeta $keyword->{keyword} . '|';
     };
-    $re = $substr($re, 0, -1); # cut last "|"
+    $re = substr($re, 0, -1); # cut last "|"
 
     return $re;
 }
