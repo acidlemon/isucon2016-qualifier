@@ -286,12 +286,12 @@ post '/stars' => sub {
 };
 
 sub create_re {
-    my ($self, $keyword) = shift;
+    my ($self, $keyword) = @_;
 
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    push @$keywords, $keyword;
+    push @$keywords, +{ keyword => $keyword };
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
 
     return $re;

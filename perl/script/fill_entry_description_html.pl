@@ -27,10 +27,10 @@ my $app = Isuda::Web->new;
 my $c = C->new;
 
 sub execute {
-    my $ents = $app->dbh->select_all('SELECT id, description FROM entry');
+    my $ents = $app->dbh->select_all('SELECT id, keyword, description FROM entry');
 
     for my $ent (@$ents) {
-        my $html = $app->htmlify($c, $ent->{description});
+        my $html = $app->htmlify($c, $ent->{keyword}, $ent->{description});
         $app->dbh->query('UPDATE entry SET description_html = ? WHERE id = ?', $html, $ent->{id});
         warn $cnt++;
     }
