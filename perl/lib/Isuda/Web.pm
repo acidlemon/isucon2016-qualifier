@@ -19,7 +19,6 @@ sub config {
         dsn           => $ENV{ISUDA_DSN}         // 'dbi:mysql:db=isuda',
         db_user       => $ENV{ISUDA_DB_USER}     // 'root',
         db_password   => $ENV{ISUDA_DB_PASSWORD} // '',
-        isutar_origin => $ENV{ISUTAR_ORIGIN}     // 'http://localhost:5001',
         isupam_origin => $ENV{ISUPAM_ORIGIN}     // 'http://localhost:5050',
     };
     my $key = shift;
@@ -72,15 +71,14 @@ filter 'authenticate' => sub {
 
 get '/initialize' => sub {
     my ($self, $c)  = @_;
+
+    # initialize isuda db
     $self->dbh->query(q[
         DELETE FROM entry WHERE id > 7101
     ]);
-    my $origin = config('isutar_origin');
-    my $url = URI->new("$origin/initialize");
-    Furl->new->get($url);
-    $c->render_json({
-        result => 'ok',
-    });
+
+    # initialize 元isutar db
+    $self->dbh->query('TRUNCATE star');
 };
 
 get '/' => [qw/set_name/] => sub {
@@ -234,6 +232,28 @@ post '/keyword/:keyword' => [qw/set_name authenticate/] => sub {
     $c->redirect('/');
 };
 
+post '/stars' => sub {
+    my ($self, $c) = @_;
+    my $keyword = $c->req->parameters->{keyword};
+
+    my $entry = $self->dbh->select_row(qq[
+        SELECT * FROM entry
+        WHERE keyword = ?
+    ], $keyword);
+    unless ($entry) {
+        $c->halt(404);
+    }
+
+    $self->dbh->query(q[
+        INSERT INTO star (keyword, user_name, created_at)
+        VALUES (?, ?, NOW())
+    ], $keyword, $c->req->parameters->{user});
+
+    $c->render_json({
+        result => 'ok',
+    });
+};
+
 sub htmlify {
     my ($self, $c, $content) = @_;
     return '' unless defined $content;
@@ -257,14 +277,12 @@ sub htmlify {
 
 sub load_stars {
     my ($self, $keyword) = @_;
-    my $origin = config('isutar_origin');
-    my $url = URI->new("$origin/stars");
-    $url->query_form(keyword => $keyword);
-    my $ua = Furl->new;
-    my $res = $ua->get($url);
-    my $data = decode_json $res->content;
 
-    $data->{stars};
+    my $stars = $self->dbh->select_all(q[
+        SELECT * FROM star WHERE keyword = ?
+    ], $keyword);
+
+    return $stars;
 }
 
 sub is_spam_contents {
