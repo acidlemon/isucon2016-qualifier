@@ -103,10 +103,10 @@ get '/' => [qw/set_name/] => sub {
     ], \@entry_ids);
 
     my $keywords = [map { $_->{keyword} } @$entries];
-    my $stars_by_keyword = load_starts_by_keyword($keywords);
+    my $stars_by_keyword = $self->load_starts_by_keyword($keywords);
     foreach my $entry (@$entries) {
         $entry->{html}  = $self->htmlify($c, $entry->{description});
-        $entry->{starts} = $stars_by_keyword->{$entry->{keyword}};
+        $entry->{stars} = $stars_by_keyword->{$entry->{keyword}};
     }
 
     my $total_entries = $self->dbh->select_one(q[
