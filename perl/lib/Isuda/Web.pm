@@ -90,11 +90,16 @@ get '/' => [qw/set_name/] => sub {
     my $page = $c->req->parameters->{page} || 1;
 
     my $entries = $self->dbh->select_all(qq[
-        SELECT * FROM entry
+        SELECT id FROM entry
         ORDER BY updated_at DESC
         LIMIT $PER_PAGE
         OFFSET @{[ $PER_PAGE * ($page-1) ]}
     ]);
+    my @entry_ids = map { $_->{id} } @$entries;
+    $entries = $self->dbh->select_all(qq[
+        SELECT * FROM entry
+        WHERE id IN (?)
+    ], \@entry_ids);
     foreach my $entry (@$entries) {
         $entry->{html}  = $self->htmlify($c, $entry->{description});
         $entry->{stars} = $self->load_stars($entry->{keyword});
