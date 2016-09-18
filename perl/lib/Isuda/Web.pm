@@ -133,11 +133,12 @@ post '/keyword' => [qw/set_name authenticate/] => sub {
         $c->halt(400, 'SPAM!');
     }
     $self->dbh->query(q[
-        INSERT INTO entry (author_id, keyword, description, created_at, updated_at, keyword_length)
-        VALUES (?, ?, ?, NOW(), NOW(), ?)
+        INSERT INTO entry (author_id, keyword, description, created_at, updated_at, keyword_length, keyword_sha1)
+        VALUES (?, ?, ?, NOW(), NOW(), ?, ?)
         ON DUPLICATE KEY UPDATE
         author_id = ?, keyword = ?, description = ?, updated_at = NOW()
-    ], $user_id, $keyword, $description, length($keyword), $user_id, $keyword, $description);
+    ], $user_id, $keyword, $description, length($keyword),
+       sha1_hex(encode_utf8($keyword)), $user_id, $keyword, $description);
 
     $c->redirect('/');
 };
@@ -261,13 +262,17 @@ sub htmlify {
     my ($self, $c, $content) = @_;
     return '' unless defined $content;
     my $keywords = $self->dbh->select_all(qq[
-        SELECT keyword FROM entry ORDER BY keyword_length DESC
+        SELECT keyword, keyword_sha1 FROM entry ORDER BY keyword_length DESC
     ]);
     my %kw2sha;
-    my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
+    my %sha1;
+    my $re = join '|', map {
+        $sha1{ $_->{keyword} } = $_->{keyword_sha1};
+        quotemeta $_->{keyword}
+    } @$keywords;
     $content =~ s{($re)}{
         my $kw = $1;
-        $kw2sha{$kw} = "isuda_" . sha1_hex(encode_utf8($kw));
+        $kw2sha{$kw} = "isuda_" . $sha1{$kw};
     }eg;
     $content = html_escape($content);
     while (my ($kw, $hash) = each %kw2sha) {
