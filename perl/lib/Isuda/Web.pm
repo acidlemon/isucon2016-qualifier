@@ -125,11 +125,11 @@ post '/keyword' => [qw/set_name authenticate/] => sub {
         $c->halt(400, 'SPAM!');
     }
     $self->dbh->query(q[
-        INSERT INTO entry (author_id, keyword, description, created_at, updated_at)
-        VALUES (?, ?, ?, NOW(), NOW())
+        INSERT INTO entry (author_id, keyword, description, created_at, updated_at, keyword_length)
+        VALUES (?, ?, ?, NOW(), NOW(), ?)
         ON DUPLICATE KEY UPDATE
         author_id = ?, keyword = ?, description = ?, updated_at = NOW()
-    ], ($user_id, $keyword, $description) x 2);
+    ], $user_id, $keyword, $description, length($keyword), $user_id, $keyword, $description);
 
     $c->redirect('/');
 };
@@ -253,7 +253,7 @@ sub htmlify {
     my ($self, $c, $content) = @_;
     return '' unless defined $content;
     my $keywords = $self->dbh->select_all(qq[
-        SELECT * FROM entry ORDER BY CHARACTER_LENGTH(keyword) DESC
+        SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
     my %kw2sha;
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
