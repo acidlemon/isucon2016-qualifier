@@ -327,7 +327,7 @@ sub htmlify_others {
     my ($self, $c, $keyword) = @_;
 
     my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE MATCH (description) AGAINST (? IN NATURAL LANGUAGE MODE)', $keyword);
-    my $htmlify_re = $self->create_re;
+    my $htmlify_re = $self->create_re($keyword);
 
     for my $entry (@$entries) {
         my $html = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
