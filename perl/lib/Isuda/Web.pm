@@ -244,7 +244,7 @@ post '/stars' => sub {
     my $keyword = $c->req->parameters->{keyword};
 
     my $entry = $self->dbh->select_row(qq[
-        SELECT * FROM entry
+        SELECT id FROM entry
         WHERE keyword = ?
     ], $keyword);
     unless ($entry) {
