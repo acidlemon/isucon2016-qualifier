@@ -14,6 +14,8 @@ use URI::Escape qw/uri_escape_utf8/;
 use Text::Xslate::Util qw/html_escape/;
 use List::Util qw/min max/;
 
+state $ua = Furl->new;
+
 sub config {
     state $conf = {
         dsn           => $ENV{ISUDA_DSN}         // 'dbi:mysql:db=isuda',
@@ -327,7 +329,6 @@ sub load_starts_by_keyword {
 
 sub is_spam_contents {
     my $content = shift;
-    my $ua = Furl->new;
     my $res = $ua->post(config('isupam_origin'), [], [
         content => encode_utf8($content),
     ]);
