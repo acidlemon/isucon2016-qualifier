@@ -274,7 +274,7 @@ sub htmlify {
     }eg;
     $content = html_escape($content);
     while (my ($kw, $hash) = each %kw2sha) {
-        my $url = $c->req->uri_for('/keyword/' . uri_escape_utf8($kw));
+        my $url = 'http://'.$c->req->env->{HTTP_HOST}.'/keyword/'.uri_escape_utf8($kw);
         my $link = sprintf '<a href="%s">%s</a>', $url, html_escape($kw);
         $content =~ s/$hash/$link/g;
     }
