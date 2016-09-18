@@ -295,7 +295,7 @@ sub load_starts_by_keyword {
     my ($self, $keywords) = @_;
 
     my $stars = $self->dbh->select_all(q[
-        SELECT keyword, user_name FROM star WHERE keyward IN (?)
+        SELECT keyword, user_name FROM star WHERE keyword IN (?)
     ], $keywords);
 
     my $ret = {};
