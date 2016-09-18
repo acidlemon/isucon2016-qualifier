@@ -291,7 +291,7 @@ sub create_re {
         $ra->add(quotemeta $keyword->{keyword});
     }
 
-    return $ra->re;
+    return $ra->as_string;
 }
 
 sub htmlify_with_re {
