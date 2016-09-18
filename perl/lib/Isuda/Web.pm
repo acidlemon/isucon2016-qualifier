@@ -119,7 +119,7 @@ get '/' => [qw/set_name/] => sub {
     ]);
     my @entry_ids = map { $_->{id} } @$entries;
     $entries = $self->dbh->select_all(qq[
-        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length FROM entry
+        SELECT id, author_id, keyword, description, description_html, updated_at, created_at, keyword_length FROM entry
         WHERE id IN (?)
     ], \@entry_ids);
 
@@ -127,7 +127,11 @@ get '/' => [qw/set_name/] => sub {
     my $stars_by_keyword = $self->load_starts_by_keyword($keywords);
     my $htmlify_re = $self->create_re();
     foreach my $entry (@$entries) {
-        $entry->{html} = $entry->{description_html} || $self->htmlify_with_re($entry->{description});
+        $entry->{html} = $entry->{description_html} || do {
+            my $html = $self->htmlify_with_re($c, $entry->{description});
+            $self->dbh->query('UPDATE entry SET description_html = ? WHERE id = ?', $html, $entry->{id});
+            $html;
+        };
         $entry->{stars} = $stars_by_keyword->{$entry->{keyword}};
     }
 
@@ -237,11 +241,15 @@ get '/keyword/:keyword' => [qw/set_name/] => sub {
     my $keyword = $c->args->{keyword} // $c->halt(400);
 
     my $entry = $self->dbh->select_row(qq[
-        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length FROM entry
+        SELECT id, author_id, keyword, description, description_html, updated_at, created_at, keyword_length FROM entry
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
-    $entry->{html} = $entry->{description_html} || $self->htmlify($entry->{description});
+    $entry->{html} = $entry->{description_html} || do {
+        my $html = $self->htmlify($c, undef, $entry->{description});
+        $self->dbh->query('UPDATE entry SET description_html = ? WHERE id = ?', $html, $entry->{id});
+        $html;
+    };
     $entry->{stars} = $self->load_stars($entry->{keyword});
 
     $c->render('keyword.tx', { entry => $entry });
@@ -364,6 +372,7 @@ sub load_starts_by_keyword {
 }
 
 sub is_spam_contents {
+    return 0;
     my $content = shift;
     my $res = $ua->post(config('isupam_origin'), [], [
         content => encode_utf8($content),
