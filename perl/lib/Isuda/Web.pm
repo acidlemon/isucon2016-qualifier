@@ -117,7 +117,7 @@ get '/' => [qw/set_name/] => sub {
     ]);
     my @entry_ids = map { $_->{id} } @$entries;
     $entries = $self->dbh->select_all(qq[
-        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length author_id, keyword_length FROM entry
+        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length FROM entry
         WHERE id IN (?)
     ], \@entry_ids);
 
@@ -234,7 +234,7 @@ get '/keyword/:keyword' => [qw/set_name/] => sub {
     my $keyword = $c->args->{keyword} // $c->halt(400);
 
     my $entry = $self->dbh->select_row(qq[
-        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length author_id, keyword_length FROM entry
+        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length FROM entry
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
