@@ -104,8 +104,9 @@ get '/' => [qw/set_name/] => sub {
 
     my $keywords = [map { $_->{keyword} } @$entries];
     my $stars_by_keyword = $self->load_starts_by_keyword($keywords);
+    my $htmlify_re = $self->create_re;
     foreach my $entry (@$entries) {
-        $entry->{html}  = $self->htmlify($c, $entry->{description});
+        $entry->{html}  = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
         $entry->{stars} = $stars_by_keyword->{$entry->{keyword}};
     }
 
@@ -260,14 +261,23 @@ post '/stars' => sub {
     });
 };
 
-sub htmlify {
-    my ($self, $c, $content) = @_;
-    return '' unless defined $content;
+sub create_re {
+    my $self = shift;
+
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    my %kw2sha;
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
+
+    return $re;
+}
+
+sub htmlify_with_re {
+    my ($self, $c, $content, $re) = @_;
+
+    return '' unless defined $content;
+
+    my %kw2sha;
     $content =~ s{($re)}{
         my $kw = $1;
         $kw2sha{$kw} = "isuda_" . sha1_hex(encode_utf8($kw));
@@ -279,6 +289,13 @@ sub htmlify {
         $content =~ s/$hash/$link/g;
     }
     $content =~ s{\n}{<br \/>\n}gr;
+}
+
+sub htmlify {
+    my ($self, $c, $content) = @_;
+
+    my $re = $self->create_re;
+    return $self->htmlify_with_re($c, $content, $re);
 }
 
 sub load_stars {
