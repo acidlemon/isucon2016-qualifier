@@ -289,7 +289,7 @@ sub create_re {
     my $re = "a" x 180000;
     $re = "";
     for my $keyword (@$keywords) {
-        $re .= quotemeta $keyword->{keyword} . '|';
+        $re .= quotemeta($keyword->{keyword}) . '|';
     };
     $re = substr($re, 0, -1); # cut last "|"
 
