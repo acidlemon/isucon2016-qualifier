@@ -43,6 +43,28 @@ sub dbh {
     });
 }
 
+sub users {
+    my ($self) = @_;
+
+    state $users =  $self->dbh->select_all('SELECT * FROM user');
+}
+
+sub user_by_id {
+    my ($self, $id) = @_;
+
+    state $user_by_id = { map { $_->{id} => $_ } @{$self->users} };
+
+    return $self->user_by_id($id);
+}
+
+sub user_by_name {
+    my ($self, $name) = @_;
+
+    state $user_by_name = { map { $_->{name} => $_ } @{$self->users} };
+
+    return $user_by_name->{$name};
+}
+
 filter 'set_name' => sub {
     my $app = shift;
     sub {
@@ -50,10 +72,7 @@ filter 'set_name' => sub {
         my $user_id = $c->env->{'psgix.session'}->{user_id};
         if ($user_id) {
             $c->stash->{user_id} = $user_id;
-            $c->stash->{user_name} = $self->dbh->select_one(q[
-                SELECT name FROM user
-                WHERE id = ?
-            ], $user_id);
+            $c->stash->{user_name} = $self->users->{$user_id}->{name};
             $c->halt(403) unless defined $c->stash->{user_name};
         }
         $app->($self,$c);
@@ -189,10 +208,7 @@ post '/login' => sub {
     my ($self, $c) = @_;
 
     my $name = $c->req->parameters->{name};
-    my $row = $self->dbh->select_row(q[
-        SELECT * FROM user
-        WHERE name = ?
-    ], $name);
+    my $row = $self->user_by_name($name);
     if (!$row || $row->{password} ne sha1_hex($row->{salt}.$c->req->parameters->{password})) {
         $c->halt(403)
     }
