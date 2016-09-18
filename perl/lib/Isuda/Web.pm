@@ -156,8 +156,7 @@ post '/keyword' => [qw/set_name authenticate/] => sub {
     }
 
     # 自分のdescription作る
-    # TODO: 自分自身のkeyword置換
-    my $description_html = $self->htmlify($c, $description);
+    my $description_html = $self->htmlify($c, $keyword, $description);
 
     $self->dbh->query(q[
         INSERT INTO entry (author_id, keyword, description, description_html, created_at, updated_at, keyword_length)
@@ -239,7 +238,7 @@ get '/keyword/:keyword' => [qw/set_name/] => sub {
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
-    $entry->{html} = $self->htmlify($c, $entry->{description_html});
+    $entry->{html} = $entry->{description_html};
     $entry->{stars} = $self->load_stars($entry->{keyword});
 
     $c->render('keyword.tx', { entry => $entry });
@@ -285,11 +284,12 @@ post '/stars' => sub {
 };
 
 sub create_re {
-    my $self = shift;
+    my ($self, $keyword) = shift;
 
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
+    push @$keywords, $keyword;
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
 
     return $re;
@@ -315,9 +315,9 @@ sub htmlify_with_re {
 }
 
 sub htmlify {
-    my ($self, $c, $content) = @_;
+    my ($self, $c, $keyword, $content) = @_;
 
-    my $re = $self->create_re;
+    my $re = $self->create_re($keyword);
     return $self->htmlify_with_re($c, $content, $re);
 }
 
