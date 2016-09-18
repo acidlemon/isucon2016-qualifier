@@ -107,7 +107,7 @@ get '/' => [qw/set_name/] => sub {
     }
 
     my $total_entries = $self->dbh->select_one(q[
-        SELECT LAST_INSERT_ID();
+        SELECT MAX(id) FROM entry
     ]);
     my $last_page = ceil($total_entries / $PER_PAGE);
     my @pages = (max(1, $page-5)..min($last_page, $page+5));
