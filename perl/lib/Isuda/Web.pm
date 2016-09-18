@@ -13,6 +13,7 @@ use Digest::SHA1 qw/sha1_hex/;
 use URI::Escape qw/uri_escape_utf8/;
 use Text::Xslate::Util qw/html_escape/;
 use List::Util qw/min max/;
+use Regexp::Assemble;
 
 state $ua = Furl->new;
 
@@ -285,9 +286,12 @@ sub create_re {
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
+    my $ra = Regexp::Assemble->new;
+    for my $keyword (@$keywords) {
+        $ra->add(quotemeta $keyword->{keyword});
+    }
 
-    return $re;
+    return $ra->re;
 }
 
 sub htmlify_with_re {
