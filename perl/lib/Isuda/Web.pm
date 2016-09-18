@@ -10,7 +10,7 @@ use Furl;
 use JSON::XS qw/decode_json/;
 use String::Random qw/random_string/;
 use Digest::SHA1 qw/sha1_hex/;
-use URI::XSEscape;
+use URI::XSEscape qw/uri_escape_utf8/;
 use Text::Xslate::Util qw/html_escape/;
 use List::Util qw/min max/;
 
