@@ -304,7 +304,6 @@ sub htmlify_with_re {
     my %kw2sha;
     for my $kw (@$re) {
         $content =~ s{$kw}{
-            my $kw = $1;
             $kw2sha{$kw} = "isuda_" . sha1_hex(encode_utf8($kw));
         }e;
     }
