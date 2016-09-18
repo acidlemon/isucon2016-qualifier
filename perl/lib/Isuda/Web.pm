@@ -76,6 +76,9 @@ get '/initialize' => sub {
     $self->dbh->query(q[
         DELETE FROM entry WHERE id > 7101
     ]);
+    $self->dbh->(q[
+        ALTER TABLE entry AUTO_INCREMENT = 7102
+    ]);
 
     # initialize 元isutar db
     $self->dbh->query('TRUNCATE star');
@@ -104,7 +107,7 @@ get '/' => [qw/set_name/] => sub {
     }
 
     my $total_entries = $self->dbh->select_one(q[
-        SELECT COUNT(*) FROM entry
+        SELECT LAST_INSERT_ID();
     ]);
     my $last_page = ceil($total_entries / $PER_PAGE);
     my @pages = (max(1, $page-5)..min($last_page, $page+5));
