@@ -17,14 +17,14 @@ use List::Util qw/min max/;
 state $ua = Furl->new;
 
 sub config {
-    state $conf = {
+    state $conf       =  {
         dsn           => $ENV{ISUDA_DSN}         // 'dbi:mysql:db=isuda',
         db_user       => $ENV{ISUDA_DB_USER}     // 'root',
         db_password   => $ENV{ISUDA_DB_PASSWORD} // '',
         isupam_origin => $ENV{ISUPAM_ORIGIN}     // 'http://localhost:5050',
     };
-    my $key = shift;
-    my $v = $conf->{$key};
+    my $key           =  shift;
+    my $v             =  $conf->{$key};
     unless (defined $v) {
         die "config value of $key undefined";
     }
@@ -34,9 +34,9 @@ sub config {
 sub dbh {
     my ($self) = @_;
     return $self->{dbh} //= DBIx::Sunny->connect(config('dsn'), config('db_user'), config('db_password'), {
-        Callbacks => {
-            connected => sub {
-                my $dbh = shift;
+        Callbacks       => {
+            connected   => sub {
+                my $dbh =  shift;
                 $dbh->do(q[SET SESSION sql_mode='TRADITIONAL,NO_AUTO_VALUE_ON_ZERO,ONLY_FULL_GROUP_BY']);
                 $dbh->do('SET NAMES utf8mb4');
                 return;
@@ -67,14 +67,14 @@ sub user_by_name {
     return $user_by_name->{$name};
 }
 
-filter 'set_name' => sub {
-    my $app = shift;
+filter 'set_name'                  => sub {
+    my $app                        =  shift;
     sub {
         my ($self, $c) = @_;
-        my $user_id = $c->env->{'psgix.session'}->{user_id};
+        my $user_id                =  $c->env->{'psgix.session'}->{user_id};
         if ($user_id) {
-            $c->stash->{user_id} = $user_id;
-            $c->stash->{user_name} = $self->user_by_id($user_id)->{name};
+            $c->stash->{user_id}   =  $user_id;
+            $c->stash->{user_name} =  $self->user_by_id($user_id)->{name};
             $c->halt(403) unless defined $c->stash->{user_name};
         }
         $app->($self,$c);
@@ -82,7 +82,7 @@ filter 'set_name' => sub {
 };
 
 filter 'authenticate' => sub {
-    my $app = shift;
+    my $app            = shift;
     sub {
         my ($self, $c) = @_;
         $c->halt(403) unless defined $c->stash->{user_id};
@@ -90,8 +90,8 @@ filter 'authenticate' => sub {
     };
 };
 
-get '/initialize' => sub {
-    my ($self, $c)  = @_;
+get '/initialize'  => sub {
+    my ($self, $c) =  @_;
 
     # initialize isuda db
     $self->dbh->query(q[
@@ -105,53 +105,53 @@ get '/initialize' => sub {
     $self->dbh->query('TRUNCATE star');
 };
 
-get '/' => [qw/set_name/] => sub {
-    my ($self, $c)  = @_;
+get '/'            => [qw/set_name/] => sub {
+    my ($self, $c) =  @_;
 
     my $PER_PAGE = 10;
-    my $page = $c->req->parameters->{page} || 1;
+    my $page     = $c->req->parameters->{page} || 1;
 
-    my $entries = $self->dbh->select_all(qq[
+    my $entries   = $self->dbh->select_all(qq[
         SELECT id FROM entry
         ORDER BY updated_at DESC
         LIMIT $PER_PAGE
         OFFSET @{[ $PER_PAGE * ($page-1) ]}
     ]);
     my @entry_ids = map { $_->{id} } @$entries;
-    $entries = $self->dbh->select_all(qq[
+    $entries      = $self->dbh->select_all(qq[
         SELECT * FROM entry
         WHERE id IN (?)
     ], \@entry_ids);
 
-    my $keywords = [map { $_->{keyword} } @$entries];
+    my $keywords         = [map { $_->{keyword} } @$entries];
     my $stars_by_keyword = $self->load_starts_by_keyword($keywords);
-    my $htmlify_re = $self->create_re;
+    my $htmlify_re       = $self->create_re;
     foreach my $entry (@$entries) {
-        $entry->{html}  = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
-        $entry->{stars} = $stars_by_keyword->{$entry->{keyword}};
+        $entry->{html}   = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
+        $entry->{stars}  = $stars_by_keyword->{$entry->{keyword}};
     }
 
     my $total_entries = $self->dbh->select_one(q[
         SELECT MAX(id) FROM entry
     ]);
-    my $last_page = ceil($total_entries / $PER_PAGE);
-    my @pages = (max(1, $page-5)..min($last_page, $page+5));
+    my $last_page     = ceil($total_entries / $PER_PAGE);
+    my @pages         = (max(1, $page-5)..min($last_page, $page+5));
 
     $c->render('index.tx', { entries => $entries, page => $page, last_page => $last_page, pages => \@pages });
 };
 
-get 'robots.txt' => sub {
-    my ($self, $c)  = @_;
+get 'robots.txt'   => sub {
+    my ($self, $c) =  @_;
     $c->halt(404);
 };
 
-post '/keyword' => [qw/set_name authenticate/] => sub {
-    my ($self, $c) = @_;
-    my $keyword = $c->req->parameters->{keyword};
+post '/keyword'    => [qw/set_name authenticate/] => sub {
+    my ($self, $c) =  @_;
+    my $keyword    =  $c->req->parameters->{keyword};
     unless (length $keyword) {
         $c->halt(400, q('keyword' required));
     }
-    my $user_id = $c->stash->{user_id};
+    my $user_id     = $c->stash->{user_id};
     my $description = $c->req->parameters->{description};
 
     if (is_spam_contents($description) || is_spam_contents($keyword)) {
@@ -167,15 +167,15 @@ post '/keyword' => [qw/set_name authenticate/] => sub {
     $c->redirect('/');
 };
 
-get '/register' => [qw/set_name/] => sub {
-    my ($self, $c)  = @_;
+get '/register'    => [qw/set_name/] => sub {
+    my ($self, $c) =  @_;
     $c->render('authenticate.tx', {
-        action => 'register',
+        action     => 'register',
     });
 };
 
-post '/register' => sub {
-    my ($self, $c) = @_;
+post '/register'   => sub {
+    my ($self, $c) =  @_;
 
     my $name = $c->req->parameters->{name};
     my $pw   = $c->req->parameters->{password};
@@ -199,18 +199,18 @@ sub register {
     return $dbh->last_insert_id;
 }
 
-get '/login' => [qw/set_name/] => sub {
-    my ($self, $c)  = @_;
+get '/login'       => [qw/set_name/] => sub {
+    my ($self, $c) =  @_;
     $c->render('authenticate.tx', {
-        action => 'login',
+        action     => 'login',
     });
 };
 
-post '/login' => sub {
-    my ($self, $c) = @_;
+post '/login'      => sub {
+    my ($self, $c) =  @_;
 
     my $name = $c->req->parameters->{name};
-    my $row = $self->user_by_name($name);
+    my $row  = $self->user_by_name($name);
     if (!$row || $row->{password} ne sha1_hex($row->{salt}.$c->req->parameters->{password})) {
         $c->halt(403)
     }
@@ -219,30 +219,30 @@ post '/login' => sub {
     $c->redirect('/');
 };
 
-get '/logout' => sub {
-    my ($self, $c)  = @_;
-    $c->env->{'psgix.session'} = {};
+get '/logout'                  => sub {
+    my ($self, $c)             =  @_;
+    $c->env->{'psgix.session'} =  {};
     $c->redirect('/');
 };
 
 get '/keyword/:keyword' => [qw/set_name/] => sub {
     my ($self, $c) = @_;
-    my $keyword = $c->args->{keyword} // $c->halt(400);
+    my $keyword    = $c->args->{keyword} // $c->halt(400);
 
-    my $entry = $self->dbh->select_row(qq[
+    my $entry         = $self->dbh->select_row(qq[
         SELECT * FROM entry
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
-    $entry->{html} = $self->htmlify($c, $entry->{description});
-    $entry->{stars} = $self->load_stars($entry->{keyword});
+    $entry->{html}    = $self->htmlify($c, $entry->{description});
+    $entry->{stars}   = $self->load_stars($entry->{keyword});
 
     $c->render('keyword.tx', { entry => $entry });
 };
 
 post '/keyword/:keyword' => [qw/set_name authenticate/] => sub {
-    my ($self, $c) = @_;
-    my $keyword = $c->args->{keyword} or $c->halt(400);
+    my ($self, $c)       =  @_;
+    my $keyword          =  $c->args->{keyword} or $c->halt(400);
     $c->req->parameters->{delete} or $c->halt(400);
 
     $c->halt(404) unless $self->dbh->select_row(qq[
@@ -257,9 +257,9 @@ post '/keyword/:keyword' => [qw/set_name authenticate/] => sub {
     $c->redirect('/');
 };
 
-post '/stars' => sub {
-    my ($self, $c) = @_;
-    my $keyword = $c->req->parameters->{keyword};
+post '/stars'      => sub {
+    my ($self, $c) =  @_;
+    my $keyword    =  $c->req->parameters->{keyword};
 
     my $entry = $self->dbh->select_row(qq[
         SELECT id FROM entry
@@ -285,13 +285,13 @@ sub create_re {
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    #    my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
-    my $re = "a" x 180000;
-    $re = "";
+    #    my $re  = join '|', map { quotemeta $_->{keyword} } @$keywords;
+    my $re       = "a" x 180000;
+    $re          = "";
     for my $keyword (@$keywords) {
-        $re .= quotemeta $keyword->{keyword} . '|';
+        $re .    = quotemeta $keyword->{keyword} . '|';
     };
-    $re = $substr($re, 0, -1); # cut last "|"
+    $re = substr($re, 0, -1); # cut last "|"
 
     return $re;
 }
