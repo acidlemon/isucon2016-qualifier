@@ -119,15 +119,14 @@ get '/' => [qw/set_name/] => sub {
     ]);
     my @entry_ids = map { $_->{id} } @$entries;
     $entries = $self->dbh->select_all(qq[
-        SELECT * FROM entry
+        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length FROM entry
         WHERE id IN (?)
     ], \@entry_ids);
 
     my $keywords = [map { $_->{keyword} } @$entries];
     my $stars_by_keyword = $self->load_starts_by_keyword($keywords);
-    my $htmlify_re = $self->create_re;
     foreach my $entry (@$entries) {
-        $entry->{html}  = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
+        $entry->{html} = $entry->{description_html};
         $entry->{stars} = $stars_by_keyword->{$entry->{keyword}};
     }
 
@@ -157,12 +156,19 @@ post '/keyword' => [qw/set_name authenticate/] => sub {
     if (is_spam_contents($description) || is_spam_contents($keyword)) {
         $c->halt(400, 'SPAM!');
     }
+
+    # 自分のdescription作る
+    my $description_html = $self->htmlify($c, $keyword, $description);
+
     $self->dbh->query(q[
-        INSERT INTO entry (author_id, keyword, description, created_at, updated_at, keyword_length)
-        VALUES (?, ?, ?, NOW(), NOW(), ?)
+        INSERT INTO entry (author_id, keyword, description, description_html, created_at, updated_at, keyword_length)
+        VALUES (?, ?, ?, ?, NOW(), NOW(), ?)
         ON DUPLICATE KEY UPDATE
-        author_id = ?, keyword = ?, description = ?, updated_at = NOW()
-    ], $user_id, $keyword, $description, length($keyword), $user_id, $keyword, $description);
+        author_id = ?, keyword = ?, description = ?, description_html = ?, updated_at = NOW()
+    ], $user_id, $keyword, $description, $description_html, length($keyword), $user_id, $keyword, $description, $description_html);
+
+    # 他のentryを更新
+    $self->htmlify_others($c, $keyword);
 
     $c->redirect('/');
 };
@@ -230,11 +236,11 @@ get '/keyword/:keyword' => [qw/set_name/] => sub {
     my $keyword = $c->args->{keyword} // $c->halt(400);
 
     my $entry = $self->dbh->select_row(qq[
-        SELECT * FROM entry
+        SELECT id, author_id, keyword, description_html, updated_at, created_at, keyword_length FROM entry
         WHERE keyword = ?
     ], $keyword);
     $c->halt(404) unless $entry;
-    $entry->{html} = $self->htmlify($c, $entry->{description});
+    $entry->{html} = $entry->{description_html};
     $entry->{stars} = $self->load_stars($entry->{keyword});
 
     $c->render('keyword.tx', { entry => $entry });
@@ -280,11 +286,12 @@ post '/stars' => sub {
 };
 
 sub create_re {
-    my $self = shift;
+    my ($self, $keyword) = shift;
 
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
+    push @$keywords, $keyword;
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
 
     return $re;
@@ -310,10 +317,22 @@ sub htmlify_with_re {
 }
 
 sub htmlify {
-    my ($self, $c, $content) = @_;
+    my ($self, $c, $keyword, $content) = @_;
 
-    my $re = $self->create_re;
+    my $re = $self->create_re($keyword);
     return $self->htmlify_with_re($c, $content, $re);
+}
+
+sub htmlify_others {
+    my ($self, $c, $keyword) = @_;
+
+    my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE description like ?', "%${keyword}%");
+    my $htmlify_re = $self->create_re;
+
+    for my $entry (@$entries) {
+        my $html = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
+        $self->dbh->query('UPDATE entry SET description_html = ? WHERE id = ?', $html, $entry->{id});
+    }
 }
 
 sub load_stars {
