@@ -101,9 +101,12 @@ get '/' => [qw/set_name/] => sub {
         SELECT * FROM entry
         WHERE id IN (?)
     ], \@entry_ids);
+
+    my $keywords = [map { $_->{keyword} } @$entries];
+    my $stars_by_keyword = load_starts_by_keyword($keywords);
     foreach my $entry (@$entries) {
         $entry->{html}  = $self->htmlify($c, $entry->{description});
-        $entry->{stars} = $self->load_stars($entry->{keyword});
+        $entry->{starts} = $stars_by_keyword->{$entry->{keyword}};
     }
 
     my $total_entries = $self->dbh->select_one(q[
@@ -286,6 +289,23 @@ sub load_stars {
     ], $keyword);
 
     return $stars;
+}
+
+sub load_starts_by_keyword {
+    my ($self, $keywords) = @_;
+
+    my $stars = $self->dbh->select_all(q[
+        SELECT keyword, user_name FROM star WHERE keyward IN (?)
+    ], $keywords);
+
+    my $ret = {};
+
+    for my $star (@$stars) {
+        $ret->{$star->{keyword}} //= [];
+        push @{$ret->{$star->{keyword}}}, $star;
+    }
+
+    return $ret;
 }
 
 sub is_spam_contents {
