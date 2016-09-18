@@ -286,12 +286,12 @@ post '/stars' => sub {
 };
 
 sub create_re {
-    my ($self, $keyword) = @_;
+    my ($self, $keyword) = shift;
 
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    push @$keywords, +{ keyword => $keyword };
+    push @$keywords, $keyword;
     my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
 
     return $re;
@@ -327,7 +327,7 @@ sub htmlify_others {
     my ($self, $c, $keyword) = @_;
 
     my $entries = $self->dbh->select_all('SELECT id, description FROM entry WHERE description like ?', "%${keyword}%");
-    my $htmlify_re = $self->create_re($keyword);
+    my $htmlify_re = $self->create_re;
 
     for my $entry (@$entries) {
         my $html = $self->htmlify_with_re($c, $entry->{description}, $htmlify_re);
