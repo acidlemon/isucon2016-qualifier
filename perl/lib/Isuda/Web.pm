@@ -72,7 +72,7 @@ filter 'set_name' => sub {
         my $user_id = $c->env->{'psgix.session'}->{user_id};
         if ($user_id) {
             $c->stash->{user_id} = $user_id;
-            $c->stash->{user_name} = $self->users_by_id($user_id)->{name};
+            $c->stash->{user_name} = $self->user_by_id($user_id)->{name};
             $c->halt(403) unless defined $c->stash->{user_name};
         }
         $app->($self,$c);
