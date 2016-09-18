@@ -13,6 +13,7 @@ use Digest::SHA1 qw/sha1_hex/;
 use URI::Escape qw/uri_escape_utf8/;
 use Text::Xslate::Util qw/html_escape/;
 use List::Util qw/min max/;
+use Redis::Fast;
 
 state $ua = Furl->new;
 
@@ -43,6 +44,11 @@ sub dbh {
             },
         },
     });
+}
+
+sub redis {
+    my ($self) = @_;
+    return $self->{redis} //= Redis::Fast->new;
 }
 
 sub users {
@@ -101,8 +107,11 @@ get '/initialize' => sub {
         ALTER TABLE entry AUTO_INCREMENT = 7102
     ]);
 
+    # flushdb redis
+    $self->redis->flushall;
+
     # initialize 元isutar db
-    $self->dbh->query('TRUNCATE star');
+    #$self->dbh->query('TRUNCATE star');
 };
 
 get '/' => [qw/set_name/] => sub {
@@ -269,10 +278,7 @@ post '/stars' => sub {
         $c->halt(404);
     }
 
-    $self->dbh->query(q[
-        INSERT INTO star (keyword, user_name, created_at)
-        VALUES (?, ?, NOW())
-    ], $keyword, $c->req->parameters->{user});
+    $self->redis->rpush(sprintf('star:%s', encode_utf8($keyword)), $c->req->parameters->{user});
 
     $c->render_json({
         result => 'ok',
@@ -319,25 +325,24 @@ sub htmlify {
 sub load_stars {
     my ($self, $keyword) = @_;
 
-    my $stars = $self->dbh->select_all(q[
-        SELECT * FROM star WHERE keyword = ?
-    ], $keyword);
+#    my $stars = $self->dbh->select_all(q[
+#        SELECT * FROM star WHERE keyword = ?
+    #    ], $keyword);
 
-    return $stars;
+    my @stars = $self->redis->lrange(sprintf('star:%s', encode_utf8($keyword)), 0, -1);
+    return [] unless @stars;
+
+    my @star_hashes = map { +{ user_name => $_ }  } @stars;
+
+    return \@star_hashes;
 }
 
 sub load_starts_by_keyword {
     my ($self, $keywords) = @_;
 
-    my $stars = $self->dbh->select_all(q[
-        SELECT keyword, user_name FROM star WHERE keyword IN (?)
-    ], $keywords);
-
     my $ret = {};
-
-    for my $star (@$stars) {
-        $ret->{$star->{keyword}} //= [];
-        push @{$ret->{$star->{keyword}}}, $star;
+    for my $keyword (@$keywords) {
+        $ret->{ $keyword } = $self->load_stars($keyword);
     }
 
     return $ret;
