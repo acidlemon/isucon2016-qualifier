@@ -291,7 +291,13 @@ sub create_re {
     my $keywords = $self->dbh->select_all(qq[
         SELECT keyword FROM entry ORDER BY keyword_length DESC
     ]);
-    my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
+    #    my $re = join '|', map { quotemeta $_->{keyword} } @$keywords;
+    my $re = "a" x 180000;
+    $re = "";
+    for my $keyword (@$keywords) {
+        $re .= quotemeta($keyword->{keyword}) . '|';
+    };
+    $re = substr($re, 0, -1); # cut last "|"
 
     return $re;
 }
